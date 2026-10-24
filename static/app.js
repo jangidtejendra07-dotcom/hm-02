@@ -189,7 +189,7 @@ async function loadLocalData() {
     state.catalog.price_catalog = data.price_catalog || {};
     state.catalog.jan_aushadhi = data.jan_aushadhi || {};
     // Re-render the Save Money table now that data is available.
-    renderSaveMoneyTable(state.selectedDrugs);
+    
   } catch (err) {
     console.warn("Could not load catalog from server — display data may be incomplete.", err);
   }
@@ -566,11 +566,18 @@ function uniqueDrugs(items) {
   return drugs.slice(0, 14);
 }
 
+
 function setSelectedDrugs(drugs) {
   state.selectedDrugs = drugs;
   renderChips();
-  renderSaveMoneyTable(drugs);
+  clearSaveMoneyTable();
 }
+
+function clearSaveMoneyTable() {
+  dom.saveMoneyResults.innerHTML = "";
+  dom.saveMoneySummary.textContent = "Awaiting analysis";
+}
+
 
 function renderChips() {
   dom.chipList.innerHTML = "";
@@ -985,6 +992,7 @@ function renderDashboard(summary, findings, resolved) {
 
   renderInteractionResults(findings, resolved);
   renderDrugCards(resolved);
+  renderSaveMoneyTable(state.selectedDrugs);
 
   state.lastFindings = findings;
   state.lastResolved = resolved;
@@ -1036,19 +1044,23 @@ function renderInteractionResults(findings, resolved) {
     });
 }
 
+
 function renderSaveMoneyTable(selectedDrugs = state.selectedDrugs) {
   const lookup = state.catalog.brand_savings_lookup || [];
-  const selectedText = selectedDrugs.join(" ");
-  const rows = lookup.map((item) => ({
-    ...item,
-    matched: matchesSavingsRow(item, selectedText),
-  })).sort((a, b) => Number(b.matched) - Number(a.matched) || a.brand.localeCompare(b.brand));
-  const matchCount = rows.filter((row) => row.matched).length;
+  const selectedText = selectedDrugs.join(" ").trim();
 
-  dom.saveMoneySummary.textContent = matchCount
-    ? `${matchCount} prescription ${matchCount === 1 ? "match" : "matches"} highlighted`
-    : "30 common Indian brands";
+  const rows = selectedText
+    ? lookup.filter(item => matchesSavingsRow(item, selectedText))
+    : [];
+
+  dom.saveMoneySummary.textContent = rows.length
+    ? `${rows.length} matching alternatives`
+    : "No matching alternatives found";
+
   dom.saveMoneyResults.innerHTML = "";
+
+  // Keep your existing rows.forEach(...) code below.
+
 
   rows.forEach((row) => {
     const tr = document.createElement("tr");
